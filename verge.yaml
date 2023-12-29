@@ -1,0 +1,428 @@
+# mode: rule
+# mixed-port: 7890
+# allow-lan: false
+# log-level: info
+# ipv6: false
+# secret: "在此修改访问令牌"
+# external-controller: 0.0.0.0:9090
+# external-ui: /opt/yacd/
+
+dns:
+  enable: false
+  enhanced-mode: fake-ip
+  fake-ip-range: 198.18.0.1/16
+  default-nameserver:
+    - 223.5.5.5
+  nameserver:
+    - tls://8.8.4.4
+    - tls://1.1.1.1
+  nameserver-policy:
+    "geosite:cn,private":
+      - https://doh.pub/dns-query
+      - https://dns.alidns.com/dns-query
+  fake-ip-filter:
+    - "*.lan"
+    - +.msftncsi.com
+    - +.msftconnecttest.com
+    - +.xboxlive.com
+    - nmcheck.gnome.org
+    - networkcheck.kde.org
+    - ping.archlinux.org
+    - localhost.ptlogin2.qq.com
+    - +.srv.nintendo.net
+    - +.stun.playstation.net
+    - +.pool.ntp.org
+
+tun:
+  enable: false
+  stack: system
+  dns-hijack:
+    - any:53
+  auto-route: true
+  auto-detect-interface: true
+
+proxy-providers:
+  Subs:
+    type: http
+    path: ./providers/subs/Subs.yaml
+    url: 替换成机场订阅链接
+    interval: 86400 # 一天
+    health-check:
+      enable: true
+      url: https://www.gstatic.com/generate_204
+      interval: 600
+  # Subs2:
+  #   type: http
+  #   path: ./providers/subs/Subs2.yaml
+  #   url: 替换成机场2订阅链接
+  #   interval: 86400 # 一天
+  #   health-check:
+  #     enable: true
+  #     url: https://www.gstatic.com/generate_204
+  #     interval: 600
+
+######### 锚点 start #######
+SELECTL_PROXIES:
+  &SELECTL_PROXIES {
+    type: select,
+    proxies:
+      [
+        代理节点,
+        🇭🇰香港节点,
+        🇹🇼台湾节点,
+        🇸🇬新加坡节点,
+        🇯🇵日本节点,
+        🇺🇸美国节点,
+        低倍率节点,
+        自动选择,
+        手动选择,
+        DIRECT,
+      ],
+  }
+
+URLTEST:
+  &URLTEST {
+    type: url-test,
+    url: https://www.gstatic.com/generate_204,
+    interval: 600,
+    tolerance: 50,
+    lazy: true,
+  }
+######### 锚点 end #######
+
+proxy-groups:
+  - name: 代理节点
+    type: select
+    proxies:
+      - Fallback
+      - 🇭🇰香港节点
+      - 🇹🇼台湾节点
+      - 🇸🇬新加坡节点
+      - 🇯🇵日本节点
+      - 🇺🇸美国节点
+      - 低倍率节点
+      - 自动选择
+      - 手动选择
+
+  - name: 自动选择
+    <<: *URLTEST
+    use:
+      - Subs
+      # - Subs2
+
+  - name: 手动选择
+    type: select
+    use:
+      - Subs
+
+  - name: Telegram
+    <<: *SELECTL_PROXIES
+
+  - name: Twitch
+    <<: *SELECTL_PROXIES
+
+  - name: Youtube
+    <<: *SELECTL_PROXIES
+
+  - name: Steam
+    <<: *SELECTL_PROXIES
+
+  - name: TikTok
+    <<: *SELECTL_PROXIES
+
+  - name: OpenAI
+    <<: *SELECTL_PROXIES
+
+  - name: Google
+    <<: *SELECTL_PROXIES
+
+  - name: Microsoft
+    <<: *SELECTL_PROXIES
+
+  - name: Konami
+    <<: *SELECTL_PROXIES
+
+  - name: Xbox # add `www.msftconnecttest.com` to dns fake-ip-filter
+    <<: *SELECTL_PROXIES
+
+  - name: Apple
+    <<: *SELECTL_PROXIES
+
+  - name: iCloud
+    <<: *SELECTL_PROXIES
+
+  - name: Netflix
+    type: select
+    proxies:
+      - 流媒体解锁
+      - 手动选择
+      - DIRECT
+
+  - name: Final
+    type: select
+    proxies:
+      - DIRECT
+      - 代理节点
+      - 自动选择
+      - 手动选择
+
+  - name: 流媒体解锁
+    type: select
+    use:
+      - Subs
+    filter: \[M\]
+
+  - name: Fallback
+    type: fallback
+    url: https://www.gstatic.com/generate_204
+    interval: 600
+    proxies:
+      - 🇭🇰香港节点
+      - 🇹🇼台湾节点
+      - 🇸🇬新加坡节点
+      - 🇯🇵日本节点
+      - 🇺🇸美国节点
+
+  - name: 🇭🇰香港节点
+    <<: *URLTEST
+    use:
+      - Subs
+    filter: ((?i)HK|香港|Hong Kong)+.*\[M\]+.*倍率\:2\.5
+
+  - name: 低倍率节点
+    <<: *URLTEST
+    use:
+      - Subs
+    filter: ((?i)HK|香港|Hong Kong)+.*\[M\]
+    exclude-filter: 倍率\:2\.5
+
+  - name: 🇹🇼台湾节点
+    <<: *URLTEST
+    use:
+      - Subs
+    filter: ((?i)TW|台湾|Taiwan)+.*\[M\]
+
+  - name: 🇸🇬新加坡节点
+    <<: *URLTEST
+    use:
+      - Subs
+    filter: ((?i)SG|新加坡|Singapore)+.*\[M\]
+
+  - name: 🇯🇵日本节点
+    <<: *URLTEST
+    use:
+      - Subs
+    filter: ((?i)JP|日本|Japan)+.*\[M\]
+
+  - name: 🇺🇸美国节点
+    <<: *URLTEST
+    use:
+      - Subs
+    filter: ((?i)US|美国|United States)+.*\[M\]
+
+  - name: 广告域名
+    type: select
+    proxies:
+      - REJECT
+      - DIRECT
+
+rules:
+  - RULE-SET,proxifier,代理节点 # Windows 下代理漫威 Snap、深岩银河等游戏
+  ###
+  - DOMAIN,clash.razord.top,DIRECT # Clash 面板
+  - DOMAIN,yacd.haishan.me,DIRECT
+  - RULE-SET,applications,DIRECT # 需要直连的常见软件列表
+  - RULE-SET,jingdong,DIRECT # 京东直连，避免 app 图片加载缓慢
+  - RULE-SET,steamcn,DIRECT
+  - RULE-SET,custom-direct,DIRECT
+  - RULE-SET,private,DIRECT # 私有网络专用域名列表
+  - RULE-SET,reject,广告域名 # 广告域名列表
+  ###
+  - RULE-SET,icloud,iCloud # iCloud 域名列表
+  - RULE-SET,apple,Apple # Apple 在中国大陆可直连的域名列表
+  - RULE-SET,openai,OpenAI
+  - RULE-SET,tiktok,TikTok
+  - RULE-SET,twitch,Twitch
+  - RULE-SET,youtube,Youtube
+  - RULE-SET,netflix,Netflix
+  - RULE-SET,google,Google
+  - RULE-SET,microsoft,Microsoft
+  - RULE-SET,steam,Steam
+  - RULE-SET,xbox,Xbox
+  - RULE-SET,telegramcidr,Telegram # Telegram 使用的 IP 地址列表
+  - RULE-SET,konami,Konami
+  - RULE-SET,custom-proxy,代理节点
+  ###
+  - RULE-SET,proxy,代理节点 # 代理域名列表
+  - RULE-SET,direct,DIRECT # 直连域名列表
+  - RULE-SET,lancidr,DIRECT # 局域网 IP 及保留 IP 地址列表
+  - RULE-SET,cncidr,DIRECT # 中国大陆 IP 地址列表
+  - RULE-SET,tld-not-cn,代理节点 # 非中国大陆使用的顶级域名列表
+  - RULE-SET,gfw,代理节点 # GFWList 域名列表
+  - GEOIP,LAN,DIRECT
+  - GEOIP,CN,DIRECT
+  - MATCH,Final
+
+rule-providers:
+  apple:
+    type: http
+    behavior: domain
+    url: https://ghproxy.ecorp.one/https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/apple.txt
+    path: ./providers/rule/apple.yaml
+    interval: 86400
+  applications:
+    type: http
+    behavior: classical
+    url: https://ghproxy.ecorp.one/https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/applications.txt
+    path: ./providers/rule/applications.yaml
+    interval: 86400
+  cncidr:
+    type: http
+    behavior: ipcidr
+    url: https://ghproxy.ecorp.one/https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/cncidr.txt
+    path: ./providers/rule/cncidr.yaml
+    interval: 86400
+  direct:
+    type: http
+    behavior: domain
+    url: https://ghproxy.ecorp.one/https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/direct.txt
+    path: ./providers/rule/direct.yaml
+    interval: 86400
+  gfw:
+    type: http
+    behavior: domain
+    url: https://ghproxy.ecorp.one/https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/gfw.txt
+    path: ./providers/rule/gfw.yaml
+    interval: 86400
+  icloud:
+    type: http
+    behavior: domain
+    url: https://ghproxy.ecorp.one/https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/icloud.txt
+    path: ./providers/rule/icloud.yaml
+    interval: 86400
+  lancidr:
+    type: http
+    behavior: ipcidr
+    url: https://ghproxy.ecorp.one/https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/lancidr.txt
+    path: ./providers/rule/lancidr.yaml
+    interval: 86400
+  private:
+    type: http
+    behavior: domain
+    url: https://ghproxy.ecorp.one/https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/private.txt
+    path: ./providers/rule/private.yaml
+    interval: 86400
+  proxy:
+    type: http
+    behavior: domain
+    url: https://ghproxy.ecorp.one/https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/proxy.txt
+    path: ./providers/rule/proxy.yaml
+    interval: 86400
+  reject:
+    type: http
+    behavior: domain
+    url: https://ghproxy.ecorp.one/https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/reject.txt
+    path: ./providers/rule/reject.yaml
+    interval: 86400
+  telegramcidr:
+    type: http
+    behavior: ipcidr
+    url: https://ghproxy.ecorp.one/https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/telegramcidr.txt
+    path: ./providers/rule/telegramcidr.yaml
+    interval: 86400
+  tld-not-cn:
+    type: http
+    behavior: domain
+    url: https://ghproxy.ecorp.one/https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/tld-not-cn.txt
+    path: ./providers/rule/tld-not-cn.yaml
+    interval: 86400
+  tiktok:
+    type: http
+    behavior: classical
+    url: https://ghproxy.ecorp.one/https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/TikTok/TikTok.yaml
+    path: ./providers/rule/tiktok.yaml
+    interval: 86400
+  twitch:
+    type: http
+    behavior: classical
+    url: https://ghproxy.ecorp.one/https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Twitch/Twitch.yaml
+    path: ./providers/rule/twitch.yaml
+    interval: 86400
+  youtube:
+    type: http
+    behavior: classical
+    url: https://ghproxy.ecorp.one/https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/YouTube/YouTube.yaml
+    path: ./providers/rule/youtube.yaml
+    interval: 86400
+  netflix:
+    type: http
+    behavior: classical
+    url: https://ghproxy.ecorp.one/https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Netflix/Netflix_Classical.yaml
+    path: ./providers/rule/netflix.yaml
+    interval: 86400
+  jingdong:
+    type: http
+    behavior: classical
+    url: https://ghproxy.ecorp.one/https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/JingDong/JingDong.yaml
+    path: ./providers/rule/jingdong.yaml
+    interval: 86400
+  google:
+    type: http
+    behavior: classical
+    url: https://ghproxy.ecorp.one/https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Google/Google.yaml
+    path: ./providers/rule/google.yaml
+    interval: 86400
+  steamcn:
+    type: http
+    behavior: classical
+    url: https://ghproxy.ecorp.one/https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/SteamCN/SteamCN.yaml
+    path: ./providers/rule/steamcn.yaml
+    interval: 86400
+  steam:
+    type: http
+    behavior: classical
+    url: https://ghproxy.ecorp.one/https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Steam/Steam.yaml
+    path: ./providers/rule/steam.yaml
+    interval: 86400
+  xbox:
+    type: http
+    behavior: classical
+    url: https://ghproxy.ecorp.one/https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Xbox/Xbox.yaml
+    path: ./providers/rule/xbox.yaml
+    interval: 86400
+  openai:
+    type: http
+    behavior: classical
+    url: https://ghproxy.ecorp.one/https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/OpenAI/OpenAI.yaml
+    path: ./providers/rule/openai.yaml
+    interval: 86400
+  proxifier:
+    type: http
+    behavior: classical
+    url: https://ghproxy.ecorp.one/https://raw.githubusercontent.com/test482/personl-clash-rule/master/proxifier.yaml
+    path: ./providers/rule/proxifier.yaml
+    interval: 86400
+  konami:
+    type: http
+    behavior: classical
+    url: https://ghproxy.ecorp.one/https://raw.githubusercontent.com/test482/personl-clash-rule/master/konami.yaml
+    path: ./providers/rule/konami.yaml
+    interval: 86400
+  custom-direct:
+    type: http
+    behavior: classical
+    url: https://ghproxy.ecorp.one/https://raw.githubusercontent.com/test482/personl-clash-rule/master/custom-direct.yaml
+    path: ./providers/rule/custom-direct.yaml
+    interval: 86400
+  custom-proxy:
+    type: http
+    behavior: classical
+    url: https://ghproxy.ecorp.one/https://raw.githubusercontent.com/test482/personl-clash-rule/master/custom-proxy.yaml
+    path: ./providers/rule/custom-proxy.yaml
+    interval: 86400
+  microsoft:
+    type: http
+    behavior: classical
+    url: https://ghproxy.ecorp.one/https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Microsoft/Microsoft.yaml
+    path: ./providers/rule/microsoft.yaml
+    interval: 86400
